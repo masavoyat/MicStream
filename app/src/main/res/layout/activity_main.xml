@@ -5,39 +5,70 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
-    <LinearLayout
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:layout_width="0px"
-        android:layout_height="0px"/>
-    <Button
-        android:id="@+id/btnStream"
-        android:layout_width="103dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Streaming"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:layout_editor_absoluteX="154dp" />
 
-    <EditText
-        android:id="@+id/editTextDestinationPort"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:ems="10"
-        android:inputType="number"
-        app:layout_constraintTop_toBottomOf="@+id/editTextDestinationIP"
-        tools:layout_editor_absoluteX="242dp" />
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    <EditText
-        android:id="@+id/editTextDestinationIP"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:ems="10"
-        android:inputType="number|numberDecimal"
-        android:digits="0123456789."
-        android:text="DestinationIP"
-        app:layout_constraintTop_toBottomOf="@+id/btnStream"
-        tools:layout_editor_absoluteX="145dp" />
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Button
+                android:id="@+id/btnStream"
+                android:layout_width="103dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Streaming" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <EditText
+                android:id="@+id/editTextDestinationIP"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:digits="0123456789."
+                android:ems="10"
+                android:inputType="number|numberDecimal"
+                android:text="DestinationIP" />
+
+            <EditText
+                android:id="@+id/editTextDestinationPort"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:ems="10"
+                android:inputType="number" />
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/textViewSampleByteSize"
+                style="@android:style/Widget.DeviceDefault.TextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:height="40dp"
+                android:text="Samples Size"
+                android:textColor="?attr/editTextColor"
+                android:textSize="18sp" />
+
+            <Spinner
+                android:id="@+id/spinnerSampleByteSize"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="20dp"
+                android:entries="@array/sampleByteSizes"
+                android:spinnerMode="dialog" />
+
+        </TableRow>
+    </TableLayout>
+
 </android.support.constraint.ConstraintLayout>

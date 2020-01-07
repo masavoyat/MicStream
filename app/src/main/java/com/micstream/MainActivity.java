@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -29,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnStream;
     private EditText editTextDestinationIP;
     private EditText editTextDestinationPort;
+    private Spinner spinnerSampleByteSize;
 
     final Handler myHandler = new Handler();
 
@@ -54,8 +56,13 @@ public class MainActivity extends AppCompatActivity {
                 else{
                     Log.i(TAG, editTextDestinationIP.getText().toString());
                     Log.i(TAG, editTextDestinationPort.getText().toString());
+                    Log.i(TAG, spinnerSampleByteSize.getSelectedItem().toString());
                     mBoundService.setStreamDestinationIP(editTextDestinationIP.getText().toString());
                     mBoundService.setStreamDestinationPort(Integer.parseInt(editTextDestinationPort.getText().toString()));
+                    if (spinnerSampleByteSize.getSelectedItem().toString().contains(("16")))
+                        mBoundService.setSampleByteSize(2);
+                    else
+                        mBoundService.setSampleByteSize(1);
                     mBoundService.startStreaming();
                     btnStream.setText("Stop");
                 }
@@ -66,6 +73,8 @@ public class MainActivity extends AppCompatActivity {
         editTextDestinationIP.setEnabled(false);
         editTextDestinationPort = (EditText)findViewById(R.id.editTextDestinationPort);
         editTextDestinationPort.setEnabled(false);
+        spinnerSampleByteSize = (Spinner)findViewById(R.id.spinnerSampleByteSize);
+        spinnerSampleByteSize.setEnabled(false);
 
     }
 
@@ -78,13 +87,16 @@ public class MainActivity extends AppCompatActivity {
                         btnStream.setText("Stop");
                         editTextDestinationIP.setEnabled(false);
                         editTextDestinationPort.setEnabled(false);
+                        spinnerSampleByteSize.setEnabled(false);
                         editTextDestinationIP.setText(mBoundService.getStreamDestinationIP());
                         editTextDestinationPort.setText(String.valueOf(mBoundService.getStreamDestinationPort()));
+                        spinnerSampleByteSize.setSelection(mBoundService.getSampleByteSize()-1);
                     }
                     else {
                         btnStream.setText("Start");
                         editTextDestinationIP.setEnabled(true);
                         editTextDestinationPort.setEnabled(true);
+                        spinnerSampleByteSize.setEnabled(true);
                     }
                     btnStream.setEnabled(true);
                 }
