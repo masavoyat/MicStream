@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+    <LinearLayout
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:layout_width="0px"
+        android:layout_height="0px"/>
+    <Button
+        android:id="@+id/btnStream"
+        android:layout_width="103dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Streaming"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout_editor_absoluteX="154dp" />
+
+    <EditText
+        android:id="@+id/editTextDestinationPort"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:inputType="number"
+        app:layout_constraintTop_toBottomOf="@+id/editTextDestinationIP"
+        tools:layout_editor_absoluteX="242dp" />
+
+    <EditText
+        android:id="@+id/editTextDestinationIP"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:ems="10"
+        android:inputType="number|numberDecimal"
+        android:digits="0123456789."
+        android:text="DestinationIP"
+        app:layout_constraintTop_toBottomOf="@+id/btnStream"
+        tools:layout_editor_absoluteX="145dp" />
+</android.support.constraint.ConstraintLayout>
