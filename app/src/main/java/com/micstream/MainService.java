@@ -23,6 +23,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MainService extends Service {
     private final static String TAG = "MainService";
@@ -31,10 +33,12 @@ public class MainService extends Service {
     private final IBinder mBinder = new LocalBinder();
     // Objects used for streaming thread
     private AtomicBoolean run = new AtomicBoolean(false);
+    private AtomicInteger dataBytes = new AtomicInteger(0);
+    private AtomicLong dataBytesResetTime = new AtomicLong(0);
     private Thread thread;
     // the audio recording options
     // Rates to be tested in increasing order, max possible will be used
-    private static final int[] RECORDING_RATES = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000};
+    private static final int[] RECORDING_RATES = {8000, 11025, 16000, 22050, 32000, 44100};//, 48000, 96000};
     private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
     public static final int PAYLOAD_TYPE_16BIT = 127;
     public static final int PAYLOAD_TYPE_8BIT = 126;
@@ -55,7 +59,7 @@ public class MainService extends Service {
         this.streamDestinationIP = streamDestinationIP;
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(getString(R.string.streamDestinationIP_key), streamDestinationIP);
-        editor.commit();
+        editor.apply();
     }
 
     public int getStreamDestinationPort() {
@@ -66,7 +70,7 @@ public class MainService extends Service {
         this.streamDestinationPort = streamDestinationPort;
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt(getString(R.string.streamDestinationPort_key), streamDestinationPort);
-        editor.commit();
+        editor.apply();
     }
 
     public int getSampleByteSize() { return sampleByteSize; }
@@ -75,7 +79,21 @@ public class MainService extends Service {
         this.sampleByteSize = sampleByteSize;
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putInt(getString(R.string.sampleByteSize_key), sampleByteSize);
-        editor.commit();
+        editor.apply();
+    }
+
+    /**
+     *  Compute an estimate of the datarate sent over the network based on
+     *  number of bytes sent and time elapsed since last call to this function
+     * @return estimated datarate
+     */
+    public int getCurrentDataRate(){
+        int ret = dataBytes.get();
+        long time = System.currentTimeMillis();
+        dataBytes.set(0);
+        int deltaTime =(int)(time - dataBytesResetTime.get());
+        dataBytesResetTime.set(time);
+        return (1000*ret)/deltaTime;
     }
 
     @Override
@@ -144,7 +162,7 @@ public class MainService extends Service {
                     datagramSocket = new DatagramSocket();
                     datagramPacket.setAddress(InetAddress.getByName(streamDestinationIP));
                     datagramPacket.setPort(streamDestinationPort);
-                    Log.d(TAG, "Created DatagramSocket : " + streamDestinationIP + ":" + String.valueOf(streamDestinationPort));
+                    Log.d(TAG, "Created DatagramSocket : " + streamDestinationIP + ":" + streamDestinationPort);
                 }
                 catch (Exception e) {
                     Log.e(TAG, e.toString());
@@ -154,11 +172,12 @@ public class MainService extends Service {
                 short frameNb = 0;
                 int sampleNb = 0;
                 int payloadType = (sampleByteSize==2 ? PAYLOAD_TYPE_16BIT : PAYLOAD_TYPE_8BIT);
+                dataBytes.set(0);
+                dataBytesResetTime.set(System.currentTimeMillis());
                 while(run.get() && (recorder.getState() == AudioRecord.STATE_INITIALIZED)
                         && (recorder.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING)){
                     try {
-                        int read = recorder.read(buffer, 0, buffer.length);
-                        int sizeToSend = read;
+                        int sizeToSend = recorder.read(buffer, 0, buffer.length);
                         int index = 0;
                         while(sizeToSend>0) {
                             int packetBufferSize = Math.min(sizeToSend, PAYLOAD_SIZE);
@@ -172,8 +191,10 @@ public class MainService extends Service {
                             index += packetBufferSize;
                             sampleNb += packetBufferSize/sampleByteSize;
                             datagramPacket.setData(packetBuffer);
-                            if(datagramSocket != null)
+                            if(datagramSocket != null) {
                                 datagramSocket.send(datagramPacket);
+                                dataBytes.set(dataBytes.get() + packetBuffer.length);
+                            }
                         }
                     } catch (Throwable t) {
                         // gérer l'exception et arrêter le traitement

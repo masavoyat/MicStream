@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -14,23 +16,28 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends AppCompatActivity {
     private static String TAG = "MainActivity";
 
-    private Runnable refreshThread;
-    private AtomicBoolean runRefreshThread = new AtomicBoolean(false);
+    private static String SAMPLE_SIZE_16BIT_STRING = "16 bit";
+    private static String SAMPLE_SIZE_8BIT_STRING = "8 bit";
+    List<String> sampleByteSizes;
     private Button btnStream;
     private EditText editTextDestinationIP;
     private EditText editTextDestinationPort;
     private Spinner spinnerSampleByteSize;
+    private TextView textViewDataRate;
 
     final Handler myHandler = new Handler();
 
@@ -46,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {UpdateGUI();}
         }, 0, 1000);
-        btnStream = (Button) findViewById(R.id.btnStream);
+        btnStream = findViewById(R.id.btnStream);
         btnStream.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (mBoundService.isStreaming()){
@@ -69,28 +76,48 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         btnStream.setEnabled(false);
-        editTextDestinationIP = (EditText)findViewById(R.id.editTextDestinationIP);
+        editTextDestinationIP = findViewById(R.id.editTextDestinationIP);
         editTextDestinationIP.setEnabled(false);
-        editTextDestinationPort = (EditText)findViewById(R.id.editTextDestinationPort);
+        editTextDestinationPort = findViewById(R.id.editTextDestinationPort);
         editTextDestinationPort.setEnabled(false);
-        spinnerSampleByteSize = (Spinner)findViewById(R.id.spinnerSampleByteSize);
+        spinnerSampleByteSize = findViewById(R.id.spinnerSampleByteSize);
         spinnerSampleByteSize.setEnabled(false);
-
+        sampleByteSizes = new ArrayList<>();
+        int bufferSize = AudioRecord.getMinBufferSize(44100,
+                AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        if(bufferSize>0)
+            sampleByteSizes.add(SAMPLE_SIZE_16BIT_STRING);
+        bufferSize = AudioRecord.getMinBufferSize(44100,
+                AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_8BIT);
+        if(bufferSize>0)
+            sampleByteSizes.add(SAMPLE_SIZE_8BIT_STRING);
+        ArrayAdapter sampleByteSizesAdapter =  new ArrayAdapter(this,
+                android.R.layout.simple_spinner_dropdown_item,  sampleByteSizes);
+        spinnerSampleByteSize.setAdapter(sampleByteSizesAdapter);
+        textViewDataRate = findViewById(R.id.textViewDataRate);
     }
 
     private void UpdateGUI() {
         myHandler.post(new Runnable() {
             public void run() {
                 if(mBoundService != null) {
-                    //Log.d(TAG, "Thread is alive " + String.valueOf(mBoundService.isStreaming()));
+                    if (!editTextDestinationIP.isEnabled())
+                        editTextDestinationIP.setText(mBoundService.getStreamDestinationIP());
+                    if (!editTextDestinationPort.isEnabled())
+                        editTextDestinationPort.setText(String.valueOf(mBoundService.getStreamDestinationPort()));
+                    if (!spinnerSampleByteSize.isEnabled()) {
+                        if (mBoundService.getSampleByteSize() == 1)
+                            spinnerSampleByteSize.setSelection(sampleByteSizes.indexOf(SAMPLE_SIZE_8BIT_STRING));
+                        if (mBoundService.getSampleByteSize() == 2)
+                            spinnerSampleByteSize.setSelection(sampleByteSizes.indexOf(SAMPLE_SIZE_16BIT_STRING));
+                    }
                     if (mBoundService.isStreaming()) {
                         btnStream.setText("Stop");
                         editTextDestinationIP.setEnabled(false);
                         editTextDestinationPort.setEnabled(false);
                         spinnerSampleByteSize.setEnabled(false);
-                        editTextDestinationIP.setText(mBoundService.getStreamDestinationIP());
-                        editTextDestinationPort.setText(String.valueOf(mBoundService.getStreamDestinationPort()));
-                        spinnerSampleByteSize.setSelection(mBoundService.getSampleByteSize()-1);
+                        String dataRateString = String.format("%.1f", ((float)mBoundService.getCurrentDataRate())/1000.0f) + " Ko/s";
+                        textViewDataRate.setText(dataRateString);
                     }
                     else {
                         btnStream.setText("Start");
@@ -171,6 +198,5 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         doUnbindService();
-        runRefreshThread.set(false);
     }
 }

@@ -18,8 +18,15 @@
                 android:id="@+id/btnStream"
                 android:layout_width="103dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="10dp"
                 android:text="Streaming" />
+
+            <TextView
+                android:id="@+id/textViewDataRate"
+                android:layout_height="40dp"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:text="0 o/s" />
         </TableRow>
 
         <TableRow
@@ -33,6 +40,7 @@
                 android:layout_marginTop="20dp"
                 android:digits="0123456789."
                 android:ems="10"
+                android:hint="DestinationIP"
                 android:inputType="number|numberDecimal"
                 android:text="DestinationIP" />
 
@@ -42,6 +50,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:ems="10"
+                android:hint="DestinationPort"
                 android:inputType="number" />
         </TableRow>
 
@@ -65,7 +74,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_marginTop="20dp"
-                android:entries="@array/sampleByteSizes"
                 android:spinnerMode="dialog" />
 
         </TableRow>

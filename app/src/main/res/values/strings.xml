@@ -3,8 +3,4 @@
     <string name="streamDestinationIP_key">streamDestinationIP</string>
     <string name="streamDestinationPort_key">streamDestinationPort</string>
     <string name="sampleByteSize_key">sampleByteSize</string>
-    <string-array name="sampleByteSizes">
-        <item>8 bits</item>
-        <item>16 bits</item>
-    </string-array>
 </resources>
