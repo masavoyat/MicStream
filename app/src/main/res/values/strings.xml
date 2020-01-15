@@ -3,4 +3,5 @@
     <string name="streamDestinationIP_key">streamDestinationIP</string>
     <string name="streamDestinationPort_key">streamDestinationPort</string>
     <string name="sampleByteSize_key">sampleByteSize</string>
+    <string name="sampleRate_key">sampleRate</string>
 </resources>

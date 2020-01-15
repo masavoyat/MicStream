@@ -48,6 +48,7 @@ public class MainService extends Service {
     String streamDestinationIP;
     int streamDestinationPort;
     int sampleByteSize;
+    int sampleRate;
     private static final int PAYLOAD_SIZE = 1000;
     SharedPreferences sharedPreferences;
 
@@ -82,6 +83,15 @@ public class MainService extends Service {
         editor.apply();
     }
 
+    public int getSampleRate() { return sampleRate; }
+
+    public void setSampleRate(int sampleRate) {
+        this.sampleRate = sampleRate;
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt(getString(R.string.sampleRate_key), sampleRate);
+        editor.apply();
+    }
+
     /**
      *  Compute an estimate of the datarate sent over the network based on
      *  number of bytes sent and time elapsed since last call to this function
@@ -105,6 +115,7 @@ public class MainService extends Service {
         streamDestinationIP = sharedPreferences.getString(getString(R.string.streamDestinationIP_key), "51.15.37.41"); // "192.168.0.252"
         streamDestinationPort = sharedPreferences.getInt(getString(R.string.streamDestinationPort_key), 2222);
         sampleByteSize = sharedPreferences.getInt(getString(R.string.sampleByteSize_key), 2); // Default 16 bits
+        sampleRate = sharedPreferences.getInt(getString(R.string.sampleRate_key), 8000);
         this.startStreaming();
     }
 
@@ -135,25 +146,18 @@ public class MainService extends Service {
                 PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK, TAG + ":wakeLock");
                 wakeLock.acquire();
                 int bufferSize = 0;
-                int rate = 0;
-                for (int i=RECORDING_RATES.length-1; i>=0; i--)
-                {
-                    rate = RECORDING_RATES[i];
-                    bufferSize = 0;
-                    recorder = null;
-                    try {
-                        int format = (sampleByteSize==2 ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT);
-                        bufferSize = AudioRecord.getMinBufferSize(rate, CHANNEL, format);
-                        bufferSize = (1+ bufferSize/PAYLOAD_SIZE)*PAYLOAD_SIZE;
-                        recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
-                                rate, CHANNEL, format, bufferSize * 10);
-                        Log.d(TAG, "Created AudioRecord, rate :" + rate + ", bufferSize: " + bufferSize);
-                    }
-                    catch (Exception e) {
-                        continue;
-                    }
-                    // If we arrive here it means that we have a valid recorder
-                    break;
+                recorder = null;
+                try {
+                    int format = (sampleByteSize==2 ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT);
+                    bufferSize = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, format);
+                    bufferSize = (1+ bufferSize/PAYLOAD_SIZE)*PAYLOAD_SIZE;
+                    recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
+                            sampleRate, CHANNEL, format, bufferSize * 10);
+                    Log.d(TAG, "Created AudioRecord, rate :" + sampleRate + ", bufferSize: " + bufferSize);
+                }
+                catch (Exception e) {
+                    Log.e(TAG, e.toString());
+                    return;
                 }
                 byte[] buffer = new byte[bufferSize];
                 DatagramSocket datagramSocket = null;
@@ -166,6 +170,7 @@ public class MainService extends Service {
                 }
                 catch (Exception e) {
                     Log.e(TAG, e.toString());
+                    return;
                 }
                 if (recorder.getState() == AudioRecord.STATE_INITIALIZED)
                     recorder.startRecording();
@@ -182,7 +187,7 @@ public class MainService extends Service {
                         while(sizeToSend>0) {
                             int packetBufferSize = Math.min(sizeToSend, PAYLOAD_SIZE);
                             StreamPacket rtp_packet = new StreamPacket((byte) payloadType,
-                                    frameNb++, sampleNb, rate,
+                                    frameNb++, sampleNb, sampleRate,
                                     Arrays.copyOfRange(buffer, index, index + packetBufferSize),
                                     packetBufferSize);
                             byte[] packetBuffer = new byte[rtp_packet.getPacketLength()];
@@ -197,18 +202,14 @@ public class MainService extends Service {
                             }
                         }
                     } catch (Throwable t) {
-                        // gérer l'exception et arrêter le traitement
+                        Log.e(TAG, t.toString());// gérer l'exception et arrêter le traitement
                     }
                 }
-                if(datagramSocket != null) {
-                    if (!datagramSocket.isClosed())
-                        datagramSocket.close();
-                }
-                if(recorder != null) {
-                    if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
-                        recorder.stop();
-                        recorder.release();
-                    }
+                if (!datagramSocket.isClosed())
+                    datagramSocket.close();
+                if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                    recorder.stop();
+                    recorder.release();
                 }
                 if(wakeLock.isHeld())
                     wakeLock.release();

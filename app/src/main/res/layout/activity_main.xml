@@ -77,6 +77,29 @@
                 android:spinnerMode="dialog" />
 
         </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" >
+
+            <TextView
+                android:id="@+id/textViewSampleRate"
+                style="@android:style/Widget.DeviceDefault.TextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:height="40dp"
+                android:text="Sample rate"
+                android:textColor="?attr/editTextColor"
+                android:textSize="18sp" />
+
+            <Spinner
+                android:id="@+id/spinnerSampleRate"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginTop="20dp"
+                android:spinnerMode="dialog" />
+        </TableRow>
     </TableLayout>
 
 </android.support.constraint.ConstraintLayout>

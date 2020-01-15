@@ -8,6 +8,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -33,10 +34,12 @@ public class MainActivity extends AppCompatActivity {
     private static String SAMPLE_SIZE_16BIT_STRING = "16 bit";
     private static String SAMPLE_SIZE_8BIT_STRING = "8 bit";
     List<String> sampleByteSizes;
+    List<Integer> sampleRates;
     private Button btnStream;
     private EditText editTextDestinationIP;
     private EditText editTextDestinationPort;
     private Spinner spinnerSampleByteSize;
+    private Spinner spinnerSampleRate;
     private TextView textViewDataRate;
 
     final Handler myHandler = new Handler();
@@ -64,12 +67,14 @@ public class MainActivity extends AppCompatActivity {
                     Log.i(TAG, editTextDestinationIP.getText().toString());
                     Log.i(TAG, editTextDestinationPort.getText().toString());
                     Log.i(TAG, spinnerSampleByteSize.getSelectedItem().toString());
+                    Log.i(TAG, String.valueOf((int)spinnerSampleRate.getSelectedItem()));
                     mBoundService.setStreamDestinationIP(editTextDestinationIP.getText().toString());
                     mBoundService.setStreamDestinationPort(Integer.parseInt(editTextDestinationPort.getText().toString()));
                     if (spinnerSampleByteSize.getSelectedItem().toString().contains(("16")))
                         mBoundService.setSampleByteSize(2);
                     else
                         mBoundService.setSampleByteSize(1);
+                    mBoundService.setSampleRate((int)spinnerSampleRate.getSelectedItem());
                     mBoundService.startStreaming();
                     btnStream.setText("Stop");
                 }
@@ -95,6 +100,33 @@ public class MainActivity extends AppCompatActivity {
                 android.R.layout.simple_spinner_dropdown_item,  sampleByteSizes);
         spinnerSampleByteSize.setAdapter(sampleByteSizesAdapter);
         textViewDataRate = findViewById(R.id.textViewDataRate);
+        spinnerSampleRate = findViewById(R.id.spinnerSampleRate);
+        sampleRates = this.getDeviceSampleRates();
+        ArrayAdapter sampleRateAdapter =  new ArrayAdapter(this,
+                android.R.layout.simple_spinner_dropdown_item,  sampleRates);
+        spinnerSampleRate.setAdapter(sampleRateAdapter);
+        spinnerSampleRate.setEnabled(false);
+    }
+
+    private ArrayList<Integer> getDeviceSampleRates(){
+        ArrayList<Integer> ratesList = new ArrayList<>();
+        final int[] RECORDING_RATES = {1000, 2000, 4000, 8000, 11025, 16000, 22050, 32000, 44100, 48000, 96000, 192000};
+        for(int rate : RECORDING_RATES) {
+            try {
+                int bufferSize = AudioRecord.getMinBufferSize(rate,
+                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+                if (bufferSize > 0) {
+                    AudioRecord ar = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
+                            rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
+                    ratesList.add(rate);
+                    ar.release();
+                }
+            }
+            catch (Exception e) {
+                continue;
+            }
+        }
+        return ratesList;
     }
 
     private void UpdateGUI() {
@@ -110,12 +142,16 @@ public class MainActivity extends AppCompatActivity {
                             spinnerSampleByteSize.setSelection(sampleByteSizes.indexOf(SAMPLE_SIZE_8BIT_STRING));
                         if (mBoundService.getSampleByteSize() == 2)
                             spinnerSampleByteSize.setSelection(sampleByteSizes.indexOf(SAMPLE_SIZE_16BIT_STRING));
+                    if (!spinnerSampleRate.isEnabled()){
+                        spinnerSampleRate.setSelection(sampleRates.indexOf(mBoundService.getSampleRate()));
+                    }
                     }
                     if (mBoundService.isStreaming()) {
                         btnStream.setText("Stop");
                         editTextDestinationIP.setEnabled(false);
                         editTextDestinationPort.setEnabled(false);
                         spinnerSampleByteSize.setEnabled(false);
+                        spinnerSampleRate.setEnabled(false);
                         String dataRateString = String.format("%.1f", ((float)mBoundService.getCurrentDataRate())/1000.0f) + " Ko/s";
                         textViewDataRate.setText(dataRateString);
                     }
@@ -124,6 +160,7 @@ public class MainActivity extends AppCompatActivity {
                         editTextDestinationIP.setEnabled(true);
                         editTextDestinationPort.setEnabled(true);
                         spinnerSampleByteSize.setEnabled(true);
+                        spinnerSampleRate.setEnabled(true);
                     }
                     btnStream.setEnabled(true);
                 }
