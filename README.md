@@ -7,7 +7,7 @@ Parameters are:
 - Destination IP
 - Destination port
 - Sample size 8/16 bits
-- (To be implemented) Sampling frequency
+- Sampling frequency
 - (To be implemented) Compression
 
 ## UDP frame format

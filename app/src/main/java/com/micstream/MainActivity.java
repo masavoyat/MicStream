@@ -25,6 +25,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -96,13 +97,13 @@ public class MainActivity extends AppCompatActivity {
                 AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_8BIT);
         if(bufferSize>0)
             sampleByteSizes.add(SAMPLE_SIZE_8BIT_STRING);
-        ArrayAdapter sampleByteSizesAdapter =  new ArrayAdapter(this,
+        ArrayAdapter<String> sampleByteSizesAdapter =  new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item,  sampleByteSizes);
         spinnerSampleByteSize.setAdapter(sampleByteSizesAdapter);
         textViewDataRate = findViewById(R.id.textViewDataRate);
         spinnerSampleRate = findViewById(R.id.spinnerSampleRate);
         sampleRates = this.getDeviceSampleRates();
-        ArrayAdapter sampleRateAdapter =  new ArrayAdapter(this,
+        ArrayAdapter<Integer> sampleRateAdapter =  new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item,  sampleRates);
         spinnerSampleRate.setAdapter(sampleRateAdapter);
         spinnerSampleRate.setEnabled(false);
@@ -122,9 +123,7 @@ public class MainActivity extends AppCompatActivity {
                     ar.release();
                 }
             }
-            catch (Exception e) {
-                continue;
-            }
+            catch (Exception e) { }
         }
         return ratesList;
     }
@@ -152,7 +151,9 @@ public class MainActivity extends AppCompatActivity {
                         editTextDestinationPort.setEnabled(false);
                         spinnerSampleByteSize.setEnabled(false);
                         spinnerSampleRate.setEnabled(false);
-                        String dataRateString = String.format("%.1f", ((float)mBoundService.getCurrentDataRate())/1000.0f) + " Ko/s";
+                        String dataRateString = String.format(Locale.getDefault(),
+                                "%.1f",
+                                ((float)mBoundService.getCurrentDataRate())/1000.0f) + " Ko/s";
                         textViewDataRate.setText(dataRateString);
                     }
                     else {

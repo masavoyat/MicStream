@@ -37,8 +37,6 @@ public class MainService extends Service {
     private AtomicLong dataBytesResetTime = new AtomicLong(0);
     private Thread thread;
     // the audio recording options
-    // Rates to be tested in increasing order, max possible will be used
-    private static final int[] RECORDING_RATES = {8000, 11025, 16000, 22050, 32000, 44100};//, 48000, 96000};
     private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
     public static final int PAYLOAD_TYPE_16BIT = 127;
     public static final int PAYLOAD_TYPE_8BIT = 126;
@@ -115,8 +113,7 @@ public class MainService extends Service {
         streamDestinationIP = sharedPreferences.getString(getString(R.string.streamDestinationIP_key), "51.15.37.41"); // "192.168.0.252"
         streamDestinationPort = sharedPreferences.getInt(getString(R.string.streamDestinationPort_key), 2222);
         sampleByteSize = sharedPreferences.getInt(getString(R.string.sampleByteSize_key), 2); // Default 16 bits
-        sampleRate = sharedPreferences.getInt(getString(R.string.sampleRate_key), 8000);
-        this.startStreaming();
+        sampleRate = sharedPreferences.getInt(getString(R.string.sampleRate_key), 44100);
     }
 
     @Override
@@ -128,39 +125,46 @@ public class MainService extends Service {
                 .setContentText("Content text")
                 .build();
         startForeground(1, notification);
-        if(recorder != null)
-            if (!isStreaming())
-                startStreaming();
+        if (!isStreaming())
+            startStreaming();
         return Service.START_STICKY;
     }
 
     public void startStreaming(){
         thread = new Thread(new Runnable() {
-            // Surcharge de la méthode run
             public void run() {
-                WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                WifiManager.WifiLock wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF  , TAG + ":wifiLock");
-                wifiLock.setReferenceCounted(true);
-                wifiLock.acquire();
-                PowerManager powerManager = (PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
-                PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK, TAG + ":wakeLock");
-                wakeLock.acquire();
-                int bufferSize = 0;
-                recorder = null;
-                try {
-                    int format = (sampleByteSize==2 ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT);
-                    bufferSize = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, format);
-                    bufferSize = (1+ bufferSize/PAYLOAD_SIZE)*PAYLOAD_SIZE;
-                    recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
-                            sampleRate, CHANNEL, format, bufferSize * 10);
-                    Log.d(TAG, "Created AudioRecord, rate :" + sampleRate + ", bufferSize: " + bufferSize);
-                }
-                catch (Exception e) {
-                    Log.e(TAG, e.toString());
+                // Initialize the recorder
+                int format = (sampleByteSize==2 ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT);
+                int bufferSize = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, format);
+                if (bufferSize == AudioRecord.ERROR_BAD_VALUE)
                     return;
-                }
+                bufferSize = (1+ bufferSize/PAYLOAD_SIZE)*PAYLOAD_SIZE;
+                boolean recoderNotInitialized = true;
+                do{
+                    recorder = null;
+                    try {
+                        recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
+                                sampleRate, CHANNEL, format, bufferSize * 10);
+                    }
+                    catch (Exception e) {
+                        Log.e(TAG, e.toString());
+                        continue;
+                    }
+                    if (recorder == null) {
+                        Log.e(TAG, "Null AudioRecord");
+                        continue;
+                    }
+                    if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+                        Log.e(TAG, "AudioRecord not initialized: " + recorder.getState());
+                        recorder.release();
+                        continue;
+                    }
+                    recoderNotInitialized = false;
+                } while(recoderNotInitialized);
+                Log.d(TAG, "Created AudioRecord, rate :" + sampleRate + ", bufferSize: " + bufferSize);
+                // Initialize the UDP stream
                 byte[] buffer = new byte[bufferSize];
-                DatagramSocket datagramSocket = null;
+                DatagramSocket datagramSocket;
                 DatagramPacket datagramPacket = new DatagramPacket(buffer, buffer.length);
                 try {
                     datagramSocket = new DatagramSocket();
@@ -172,8 +176,16 @@ public class MainService extends Service {
                     Log.e(TAG, e.toString());
                     return;
                 }
-                if (recorder.getState() == AudioRecord.STATE_INITIALIZED)
-                    recorder.startRecording();
+                // recorder and socket are OK so we can wakeLock and WiFiLock
+                WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                WifiManager.WifiLock wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF  , TAG + ":wifiLock");
+                wifiLock.setReferenceCounted(true);
+                wifiLock.acquire();
+                PowerManager powerManager = (PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
+                PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK, TAG + ":wakeLock");
+                wakeLock.acquire();
+                // Start recording and stream loop
+                recorder.startRecording();
                 short frameNb = 0;
                 int sampleNb = 0;
                 int payloadType = (sampleByteSize==2 ? PAYLOAD_TYPE_16BIT : PAYLOAD_TYPE_8BIT);
@@ -196,7 +208,7 @@ public class MainService extends Service {
                             index += packetBufferSize;
                             sampleNb += packetBufferSize/sampleByteSize;
                             datagramPacket.setData(packetBuffer);
-                            if(datagramSocket != null) {
+                            if(!datagramSocket.isClosed()) {
                                 datagramSocket.send(datagramPacket);
                                 dataBytes.set(dataBytes.get() + packetBuffer.length);
                             }
@@ -205,16 +217,18 @@ public class MainService extends Service {
                         Log.e(TAG, t.toString());// gérer l'exception et arrêter le traitement
                     }
                 }
+                // Stop and close everything
                 if (!datagramSocket.isClosed())
                     datagramSocket.close();
-                if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                if (recorder.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING)
                     recorder.stop();
+                if (recorder.getState() == AudioRecord.STATE_INITIALIZED)
                     recorder.release();
-                }
                 if(wakeLock.isHeld())
                     wakeLock.release();
                 if(wifiLock.isHeld())
                     wifiLock.release();
+                Log.d(TAG, "Exit Streaming thread");
             }
         });
         run.set(true);
