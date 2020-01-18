@@ -6,9 +6,8 @@ Parameters are configured in the main application page and streaming is done by 
 Parameters are:
 - Destination IP
 - Destination port
-- Sample size 8/16 bits
+- Payload Type: Sample size 8/16 bits, Compression
 - Sampling frequency
-- (To be implemented) Compression
 
 ## UDP frame format
 The frame format is inspired from RTP frame format
@@ -17,7 +16,7 @@ The frame format is inspired from RTP frame format
 |Element|Size (bytes)|Description|
 |:-----:|:----------:|:----------:|
 |firstByte|1|First byte is always 0x80|
-|payloadType|1|Byte indicate the payload type and how to read it.<br>See section below for more information|
+|payloadTypeId|1|Byte indicate the payload type and how to read it.<br>See section below for more information|
 |sequenceNumber|2|An number incrementing with every UDP frame indicating the sequence ordering|
 |timeStamp |4|Currently implemented as sample counter|
 |samplingFrequency |4|The sampling frequency of the recording device in Hz|
@@ -26,7 +25,10 @@ Total header size is 12 bytes.
 
 ### Payload types
 
-|PayloadType|Sample Size|Description|
-|:---:|:---:|:---:|
-|127| 16 bits | Raw signed 16 bits samples|
-|126| 8 bits | Raw signed 16 bits samples|
+|PayloadType|PayloadTypeId|Sample Size|Description|
+|:---:|:---:|:---:|:---:|
+|RAW 16BIT|127| 16 bits | Raw signed 16 bits samples|
+|RAW 8BIT|126| 8 bits | Raw signed 8 bits samples|
+|ZIP 16BIT|125| 16 bits | Zip compressed signed 16 bits samples|
+|ZIP 8BIT|124| 8 bits | Zip compressed signed 8 bits samples|
+

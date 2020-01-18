@@ -8,7 +8,6 @@ import android.util.Log;
 
 public class BootReceiver extends BroadcastReceiver {
     private static String TAG = "BootReceiver";
-    Context ctx;
 
     @Override
     public void onReceive(Context context, Intent intent) {

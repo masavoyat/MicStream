@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.zip.Deflater;
 
 public class MainService extends Service {
     private final static String TAG = "MainService";
@@ -38,15 +39,13 @@ public class MainService extends Service {
     private Thread thread;
     // the audio recording options
     private static final int CHANNEL = AudioFormat.CHANNEL_IN_MONO;
-    public static final int PAYLOAD_TYPE_16BIT = 127;
-    public static final int PAYLOAD_TYPE_8BIT = 126;
     // the audio recorder
     private AudioRecord recorder;
     // Streaming objects
     String streamDestinationIP;
     int streamDestinationPort;
-    int sampleByteSize;
     int sampleRate;
+    PayloadType payloadType;
     private static final int PAYLOAD_SIZE = 1000;
     SharedPreferences sharedPreferences;
 
@@ -72,12 +71,12 @@ public class MainService extends Service {
         editor.apply();
     }
 
-    public int getSampleByteSize() { return sampleByteSize; }
+    public PayloadType getPayloadType() { return payloadType;}
 
-    public void setSampleByteSize(int sampleByteSize) {
-        this.sampleByteSize = sampleByteSize;
+    public void setPayloadType(PayloadType payloadType) {
+        this.payloadType = payloadType;
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putInt(getString(R.string.sampleByteSize_key), sampleByteSize);
+        editor.putString(getString(R.string.payloadType_key), payloadType.toString());
         editor.apply();
     }
 
@@ -110,9 +109,10 @@ public class MainService extends Service {
         Log.d(TAG, "Create");
         Toast.makeText(this, "Create service", Toast.LENGTH_LONG).show();
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        streamDestinationIP = sharedPreferences.getString(getString(R.string.streamDestinationIP_key), "51.15.37.41"); // "192.168.0.252"
+        streamDestinationIP = sharedPreferences.getString(getString(R.string.streamDestinationIP_key), "127.0.0.1");
         streamDestinationPort = sharedPreferences.getInt(getString(R.string.streamDestinationPort_key), 2222);
-        sampleByteSize = sharedPreferences.getInt(getString(R.string.sampleByteSize_key), 2); // Default 16 bits
+        payloadType = PayloadType.valueOf(sharedPreferences.getString(getString(R.string.payloadType_key),
+                                            PayloadType.RAW_16BIT.toString()));
         sampleRate = sharedPreferences.getInt(getString(R.string.sampleRate_key), 44100);
     }
 
@@ -134,7 +134,7 @@ public class MainService extends Service {
         thread = new Thread(new Runnable() {
             public void run() {
                 // Initialize the recorder
-                int format = (sampleByteSize==2 ? AudioFormat.ENCODING_PCM_16BIT : AudioFormat.ENCODING_PCM_8BIT);
+                int format = payloadType.getAudioFormat();
                 int bufferSize = AudioRecord.getMinBufferSize(sampleRate, CHANNEL, format);
                 if (bufferSize == AudioRecord.ERROR_BAD_VALUE)
                     return;
@@ -161,7 +161,8 @@ public class MainService extends Service {
                     }
                     recoderNotInitialized = false;
                 } while(recoderNotInitialized);
-                Log.d(TAG, "Created AudioRecord, rate :" + sampleRate + ", bufferSize: " + bufferSize);
+                Log.d(TAG, "Created AudioRecord, rate :" + sampleRate +
+                                ", bufferSize: " + bufferSize);
                 // Initialize the UDP stream
                 byte[] buffer = new byte[bufferSize];
                 DatagramSocket datagramSocket;
@@ -170,7 +171,8 @@ public class MainService extends Service {
                     datagramSocket = new DatagramSocket();
                     datagramPacket.setAddress(InetAddress.getByName(streamDestinationIP));
                     datagramPacket.setPort(streamDestinationPort);
-                    Log.d(TAG, "Created DatagramSocket : " + streamDestinationIP + ":" + streamDestinationPort);
+                    Log.d(TAG, "Created DatagramSocket : " +
+                                streamDestinationIP + ":" + streamDestinationPort);
                 }
                 catch (Exception e) {
                     Log.e(TAG, e.toString());
@@ -188,7 +190,6 @@ public class MainService extends Service {
                 recorder.startRecording();
                 short frameNb = 0;
                 int sampleNb = 0;
-                int payloadType = (sampleByteSize==2 ? PAYLOAD_TYPE_16BIT : PAYLOAD_TYPE_8BIT);
                 dataBytes.set(0);
                 dataBytesResetTime.set(System.currentTimeMillis());
                 while(run.get() && (recorder.getState() == AudioRecord.STATE_INITIALIZED)
@@ -198,15 +199,25 @@ public class MainService extends Service {
                         int index = 0;
                         while(sizeToSend>0) {
                             int packetBufferSize = Math.min(sizeToSend, PAYLOAD_SIZE);
-                            StreamPacket rtp_packet = new StreamPacket((byte) payloadType,
+                            byte[] bufferToSend = Arrays.copyOfRange(buffer, index, index + packetBufferSize);
+                            if (payloadType.compression == PayloadType.Compression.ZIP) {
+                                byte[] output = new byte[2*packetBufferSize];
+                                Deflater compresser = new Deflater(Deflater.BEST_COMPRESSION);
+                                compresser.setInput(bufferToSend);
+                                compresser.finish();
+                                int compressedDataLength = compresser.deflate(output);
+                                compresser.end();
+                                bufferToSend = Arrays.copyOfRange(output, 0, compressedDataLength);
+                            }
+                            StreamPacket rtp_packet = new StreamPacket((byte) payloadType.payloadTypeId,
                                     frameNb++, sampleNb, sampleRate,
-                                    Arrays.copyOfRange(buffer, index, index + packetBufferSize),
-                                    packetBufferSize);
+                                    bufferToSend,
+                                    bufferToSend.length);
                             byte[] packetBuffer = new byte[rtp_packet.getPacketLength()];
                             rtp_packet.getPacket(packetBuffer);
                             sizeToSend -= packetBufferSize;
                             index += packetBufferSize;
-                            sampleNb += packetBufferSize/sampleByteSize;
+                            sampleNb += packetBufferSize/payloadType.sampleByteSize;
                             datagramPacket.setData(packetBuffer);
                             if(!datagramSocket.isClosed()) {
                                 datagramSocket.send(datagramPacket);

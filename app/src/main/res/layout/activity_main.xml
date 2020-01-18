@@ -16,15 +16,16 @@
 
             <Button
                 android:id="@+id/btnStream"
-                android:layout_width="103dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
+                android:layout_weight="0.5"
                 android:text="Streaming" />
 
             <TextView
                 android:id="@+id/textViewDataRate"
                 android:layout_height="40dp"
                 android:layout_marginTop="10dp"
+                android:layout_weight="0.5"
                 android:gravity="center"
                 android:text="0 o/s" />
         </TableRow>
@@ -35,9 +36,9 @@
 
             <EditText
                 android:id="@+id/editTextDestinationIP"
-                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:layout_weight="0.6"
                 android:digits="0123456789."
                 android:ems="10"
                 android:hint="DestinationIP"
@@ -46,9 +47,9 @@
 
             <EditText
                 android:id="@+id/editTextDestinationPort"
-                android:layout_width="100dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:layout_weight="0.4"
                 android:ems="10"
                 android:hint="DestinationPort"
                 android:inputType="number" />
@@ -59,28 +60,30 @@
             android:layout_height="match_parent">
 
             <TextView
-                android:id="@+id/textViewSampleByteSize"
+                android:id="@+id/textViewPayloadType"
                 style="@android:style/Widget.DeviceDefault.TextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:layout_weight="0.5"
                 android:height="40dp"
-                android:text="Samples Size"
+                android:text="PayloadType"
                 android:textColor="?attr/editTextColor"
                 android:textSize="18sp" />
 
             <Spinner
-                android:id="@+id/spinnerSampleByteSize"
-                android:layout_width="match_parent"
+                android:id="@+id/spinnerPayloadType"
+                android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:layout_marginTop="20dp"
+                android:layout_weight="0.5"
                 android:spinnerMode="dialog" />
 
         </TableRow>
 
         <TableRow
             android:layout_width="match_parent"
-            android:layout_height="match_parent" >
+            android:layout_height="match_parent">
 
             <TextView
                 android:id="@+id/textViewSampleRate"
@@ -88,6 +91,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:layout_weight="0.5"
                 android:height="40dp"
                 android:text="Sample rate"
                 android:textColor="?attr/editTextColor"
@@ -95,9 +99,10 @@
 
             <Spinner
                 android:id="@+id/spinnerSampleRate"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:layout_marginTop="20dp"
+                android:layout_weight="0.5"
                 android:spinnerMode="dialog" />
         </TableRow>
     </TableLayout>
