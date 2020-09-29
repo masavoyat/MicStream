@@ -2,18 +2,23 @@ package com.micstream;
 
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
@@ -116,12 +121,26 @@ public class MainService extends Service {
         sampleRate = sharedPreferences.getInt(getString(R.string.sampleRate_key), 44100);
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private String createNotificationChannel(String channelId , String channelName) {
+        NotificationChannel chan = new NotificationChannel(channelId,
+                channelName, NotificationManager.IMPORTANCE_NONE);
+        chan.setLightColor(Color.BLUE);
+        chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert manager != null;
+        manager.createNotificationChannel(chan);
+        return channelId;
+    }
+
     @Override
     public int onStartCommand (Intent intent, int flags, int startId){
         super.onStartCommand(intent, flags, startId);
         Log.d(TAG, "Start");
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            createNotificationChannel(TAG, TAG);
         Notification notification = new NotificationCompat.Builder(this, TAG)
-                .setContentTitle("Foreground Service")
+                .setContentTitle("Background Service")
                 .setContentText("Content text")
                 .build();
         startForeground(1, notification);
