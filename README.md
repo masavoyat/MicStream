@@ -8,6 +8,9 @@ Parameters are:
 - Destination port
 - Payload Type: Sample size 8/16 bits, Compression
 - Sampling frequency
+<br>
+An example of Stream receiver and decoder is implemented here:
+https://github.com/masavoyat/MicStreamServer
 
 ## UDP frame format
 The frame format is inspired from RTP frame format
